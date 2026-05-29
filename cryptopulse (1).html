@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CryptoPulse — 加密貨幣交易工具平台</title>
+<meta name="description" content="加密貨幣市場情緒分析、諧波形態偵測、即時價格數據">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg0: #0a0c10;
+    --bg1: #0f1117;
+    --bg2: #151820;
+    --bg3: #1c2030;
+    --border: #ffffff12;
+    --border2: #ffffff20;
+    --text1: #e8eaf0;
+    --text2: #8b9bb4;
+    --text3: #4a5568;
+    --green: #00e5a0;
+    --red: #ff4d6d;
+    --amber: #ffb800;
+    --blue: #4d9fff;
+    --purple: #a78bfa;
+    --green-dim: #00e5a015;
+    --red-dim: #ff4d6d15;
+    --amber-dim: #ffb80015;
+  }
+
+  html, body {
+    background: var(--bg0);
+    font-family: 'Syne', sans-serif;
+    color: var(--text1);
+    min-height: 100vh;
+  }
+
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  /* NAV */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo { font-size: 1.15rem; font-weight: 700; letter-spacing: .06em; }
+  .logo span { color: var(--green); }
+  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tab {
+    padding: 7px 16px;
+    border-radius: 7px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text2);
+    border: 1px solid transparent;
+    background: none;
+    font-family: 'Syne', sans-serif;
+    font-weight: 500;
+    transition: all .2s;
+  }
+  .nav-tab.active {
+    background: var(--bg3);
+    color: var(--text1);
+    border-color: var(--border2);
+  }
+  .nav-tab:hover { color: var(--text1); }
+  .badge {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 5px;
+    background: var(--green-dim);
+    color: var(--green);
+    border: 1px solid #00e5a030;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .badge { animation: blink 2s infinite; }
+
+  /* LAYOUT */
+  main { padding: 1.75rem 2rem; max-width: 1280px; margin: 0 auto; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+
+  @media (max-width: 900px) {
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+    nav { padding: 1rem; }
+    main { padding: 1rem; }
+  }
+  @media (max-width: 600px) {
+    .grid-4, .grid-3 { grid-template-columns: 1fr 1fr; }
+    .nav-tab { font-size: 11px; padding: 6px 10px; }
+    .logo { font-size: 1rem; }
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+  .card-sm {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+  }
+
+  /* METRICS */
+  .metric-label {
+    font-size: 11px;
+    color: var(--text2);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+  }
+  .metric-val {
+    font-size: 1.75rem;
+    font-weight: 700;
+    font-family: 'IBM Plex Mono', monospace;
+    line-height: 1.1;
+  }
+  .metric-sub { font-size: 12px; color: var(--text3); margin-top: 5px; }
+
+  .up { color: var(--green); }
+  .down { color: var(--red); }
+  .neutral { color: var(--amber); }
+
+  /* SECTION TITLE */
+  .section-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  /* GAUGE */
+  .gauge-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 1.5rem .5rem;
+  }
+  .gauge-label { font-size: 1.3rem; font-weight: 700; margin-top: .5rem; }
+  .gauge-sub { font-size: 12px; color: var(--text2); margin-top: 4px; }
+
+  /* TABLE */
+  .coin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .coin-table th {
+    color: var(--text3);
+    font-weight: 400;
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+  }
+  .coin-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .coin-table tr:last-child td { border-bottom: none; }
+  .coin-table tbody tr { transition: background .15s; }
+  .coin-table tbody tr:hover { background: var(--bg3); }
+
+  .coin-name { display: flex; align-items: center; gap: 10px; }
+  .coin-icon {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* PILLS */
+  .pill { display: inline-block; padding: 3px 9px; border-radius: 5px; font-size: 11px; font-weight: 500; }
+  .pill-green { background: var(--green-dim); color: var(--green); border: 1px solid #00e5a025; }
+  .pill-red   { background: var(--red-dim);   color: var(--red);   border: 1px solid #ff4d6d25; }
+  .pill-amber { background: var(--amber-dim); color: var(--amber); border: 1px solid #ffb80025; }
+
+  /* NEWS */
+  .news-item {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex; gap: 12px;
+    align-items: flex-start;
+    transition: background .15s;
+  }
+  .news-item:last-child { border-bottom: none; }
+  .news-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .news-title { font-size: 13px; margin-bottom: 4px; line-height: 1.5; }
+  .news-meta { font-size: 11px; color: var(--text3); }
+
+  /* HARMONIC */
+  .chart-controls { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ctrl-btn {
+    padding: 5px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid var(--border2);
+    background: var(--bg3);
+    color: var(--text2);
+    font-family: 'Syne', sans-serif;
+    font-weight: 500;
+    transition: all .2s;
+  }
+  .ctrl-btn.active, .ctrl-btn:hover {
+    background: var(--green-dim);
+    color: var(--green);
+    border-color: #00e5a030;
+  }
+
+  .chart-container {
+    position: relative;
+    width: 100%;
+    height: 520px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .tv-wrap {
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .tv-mini-wrap {
+    width: 100%;
+    height: 220px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--bg2);
+  }
+
+  .pattern-item {
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: border-color .2s;
+  }
+  .pattern-item:hover { border-color: var(--border2); }
+  .pattern-name { font-size: 13px; font-weight: 600; }
+  .pattern-meta { font-size: 11px; color: var(--text2); margin-top: 3px; }
+  .accuracy-bar { height: 3px; background: var(--bg1); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .accuracy-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+
+  /* LOADING */
+  .loading-row { display: flex; align-items: center; gap: 10px; color: var(--text3); font-size: 12px; padding: 1.25rem; }
+  @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+  .pulse { animation: pulse 1.5s infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  /* CHART LEGEND */
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; }
+  .legend-item { font-size: 11px; display: flex; align-items: center; gap: 5px; color: var(--text2); }
+  .legend-sq { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .legend-line { width: 18px; height: 2px; display: inline-block; }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 2rem;
+    font-size: 12px;
+    color: var(--text3);
+    border-top: 1px solid var(--border);
+    margin-top: 2rem;
+  }
+  footer a { color: var(--text2); text-decoration: none; }
+  footer a:hover { color: var(--text1); }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg0); }
+  ::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border2); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">CRYPTO<span>PULSE</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('sentiment', this)">市場情緒 / Sentiment</button>
+    <button class="nav-tab" onclick="showPage('harmonic', this)">諧波形態 / Harmonics</button>
+  </div>
+  <div class="badge">● LIVE</div>
+</nav>
+
+<main>
+
+  <!-- ========== SENTIMENT PAGE ========== -->
+  <div class="page active" id="page-sentiment">
+
+    <div class="grid-4">
+      <div class="card-sm">
+        <div class="metric-label">Fear & Greed</div>
+        <div class="metric-val neutral" id="fg-val">--</div>
+        <div class="metric-sub pulse" id="fg-sub">載入中...</div>
+      </div>
+      <div class="card-sm">
+        <div class="metric-label">BTC 價格 / Price</div>
+        <div class="metric-val" id="btc-price">--</div>
+        <div class="metric-sub pulse" id="btc-change">--</div>
+      </div>
+      <div class="card-sm">
+        <div class="metric-label">ETH 價格 / Price</div>
+        <div class="metric-val" id="eth-price">--</div>
+        <div class="metric-sub pulse" id="eth-change">--</div>
+      </div>
+      <div class="card-sm">
+        <div class="metric-label">總市值 / Market Cap</div>
+        <div class="metric-val" id="total-mcap">--</div>
+        <div class="metric-sub pulse" id="mcap-sub">整合6幣種</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="section-title"><span class="dot"></span>恐懼 &amp; 貪婪指數 / Fear &amp; Greed Index</div>
+        <div class="gauge-wrap">
+          <canvas id="gaugeCanvas" width="260" height="150"
+            role="img" aria-label="Fear and Greed Index semicircle gauge">Fear and Greed gauge</canvas>
+          <div class="gauge-label" id="fg-label" style="color:var(--amber)">--</div>
+          <div class="gauge-sub" id="fg-desc">數據載入中 / Loading data...</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);padding:0 .5rem;margin-top:.5rem">
+          <span>極度恐懼<br>Extreme Fear</span>
+          <span style="text-align:center">中立<br>Neutral</span>
+          <span style="text-align:right">極度貪婪<br>Extreme Greed</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title"><span class="dot"></span>BTC 即時 K 線 / BTC Live Chart (TradingView)</div>
+        <div class="tv-mini-wrap" id="tv-mini-container">
+          <!-- TradingView Mini Chart Widget -->
+          <div class="tradingview-widget-container" style="height:100%;width:100%">
+            <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
+            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
+            {
+              "symbol": "BINANCE:BTCUSDT",
+              "width": "100%",
+              "height": "100%",
+              "locale": "zh_TW",
+              "dateRange": "1D",
+              "colorTheme": "dark",
+              "isTransparent": true,
+              "autosize": true,
+              "largeChartUrl": "",
+              "chartOnly": false,
+              "noTimeScale": false
+            }
+            </script>
+          </div>
+        </div>
+        <div style="display:flex;gap:1.5rem;margin-top:1rem;font-size:12px;flex-wrap:wrap">
+          <div><div style="color:var(--text3);font-size:11px">24h 高 High</div><div class="mono up" id="btc-high">--</div></div>
+          <div><div style="color:var(--text3);font-size:11px">24h 低 Low</div><div class="mono down" id="btc-low">--</div></div>
+          <div><div style="color:var(--text3);font-size:11px">成交量 Volume</div><div class="mono" id="btc-vol">--</div></div>
+          <div><div style="color:var(--text3);font-size:11px">市值 MCap</div><div class="mono" id="btc-mcap">--</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="section-title"><span class="dot"></span>主流幣排行 / Top Coins</div>
+        <table class="coin-table">
+          <thead>
+            <tr>
+              <th>幣種 Coin</th>
+              <th>價格 Price</th>
+              <th>24h 漲跌</th>
+              <th>情緒 Sentiment</th>
+            </tr>
+          </thead>
+          <tbody id="coin-table-body">
+            <tr><td colspan="4"><div class="loading-row"><span class="spinner"></span>載入市場數據中 / Loading market data...</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="section-title"><span class="dot"></span>30日情緒歷史 / 30-Day Sentiment History</div>
+        <div style="position:relative;height:200px">
+          <canvas id="sentimentHistChart" role="img" aria-label="30 day fear and greed index bar chart history">30d sentiment history</canvas>
+        </div>
+        <div class="legend" style="margin-top:12px">
+          <div class="legend-item"><span class="legend-sq" style="background:#ff4d6d"></span>恐懼 Fear (0–44)</div>
+          <div class="legend-item"><span class="legend-sq" style="background:#ffb800"></span>中立 Neutral (45–55)</div>
+          <div class="legend-item"><span class="legend-sq" style="background:#00e5a0"></span>貪婪 Greed (56–100)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title"><span class="dot"></span>最新新聞情緒分析 / News Sentiment Analysis</div>
+      <div id="news-feed">
+        <div class="loading-row"><span class="spinner"></span>分析新聞情緒中 / Analyzing news sentiment...</div>
+      </div>
+    </div>
+
+  </div><!-- /sentiment -->
+
+
+  <!-- ========== HARMONIC PAGE ========== -->
+  <div class="page" id="page-harmonic">
+
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.75rem">
+        <div class="section-title" style="margin:0"><span class="dot"></span>即時 K 線圖 + 諧波形態 / Live Chart + Harmonic Patterns (TradingView)</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <div class="chart-controls" id="sym-controls">
+            <button class="ctrl-btn active" onclick="setTVSymbol('BINANCE:BTCUSDT','BTC',this)">BTC/USDT</button>
+            <button class="ctrl-btn" onclick="setTVSymbol('BINANCE:ETHUSDT','ETH',this)">ETH/USDT</button>
+            <button class="ctrl-btn" onclick="setTVSymbol('BINANCE:SOLUSDT','SOL',this)">SOL/USDT</button>
+            <button class="ctrl-btn" onclick="setTVSymbol('BINANCE:BNBUSDT','BNB',this)">BNB/USDT</button>
+          </div>
+          <div class="chart-controls" id="tf-controls" style="border-left:1px solid var(--border);padding-left:8px">
+            <button class="ctrl-btn" onclick="setTVInterval('15',this)">15m</button>
+            <button class="ctrl-btn" onclick="setTVInterval('60',this)">1H</button>
+            <button class="ctrl-btn active" onclick="setTVInterval('240',this)">4H</button>
+            <button class="ctrl-btn" onclick="setTVInterval('D',this)">1D</button>
+            <button class="ctrl-btn" onclick="setTVInterval('W',this)">1W</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TradingView Advanced Chart -->
+      <div class="chart-container">
+        <div class="tv-wrap" id="tv-advanced-container">
+          <div class="tradingview-widget-container" style="height:100%;width:100%">
+            <div id="tradingview_advanced" style="height:100%;width:100%"></div>
+            <script type="text/javascript" src="https://s3.tradingview.com/tv.js" async onload="initTVChart()"></script>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:1rem;margin-top:1rem;flex-wrap:wrap;align-items:center;justify-content:space-between">
+        <div class="legend">
+          <div class="legend-item"><span class="legend-sq" style="background:#00e5a025;border:1px solid #00e5a060"></span>PRZ 潛在反轉區 / Potential Reversal Zone</div>
+          <div class="legend-item" style="color:var(--text3);font-size:11px">💡 點擊圖表右上角工具可手動繪製諧波 / Use drawing tools to mark XABCD points</div>
+        </div>
+        <a href="https://www.tradingview.com/chart/?symbol=BINANCE:BTCUSDT" target="_blank"
+           style="font-size:11px;color:var(--text2);text-decoration:none;border:1px solid var(--border);padding:5px 12px;border-radius:6px;transition:all .2s"
+           onmouseover="this.style.color='var(--text1)'" onmouseout="this.style.color='var(--text2)'">
+          在 TradingView 開啟 ↗
+        </a>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:1.5rem">
+      <div class="card">
+        <div class="section-title"><span class="dot"></span>偵測到的形態 / Detected Patterns</div>
+        <div id="pattern-list" style="display:flex;flex-direction:column;gap:8px">
+          <div class="loading-row"><span class="spinner"></span>掃描形態中...</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-title"><span class="dot"></span>Fibonacci 比例參考</div>
+        <div style="display:flex;flex-direction:column;gap:10px;font-size:12px">
+          <div style="padding:10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+            <div style="color:var(--text2);font-size:11px;margin-bottom:8px;font-weight:600">GARTLEY</div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3)">XA → AB</span><span class="mono" style="color:var(--blue)">0.618</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3)">AB → BC</span><span class="mono" style="color:var(--blue)">0.382 – 0.886</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3)">BC → CD</span><span class="mono" style="color:var(--blue)">1.272 – 1.618</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--text3)">XA → AD</span><span class="mono up">0.786</span></div>
+          </div>
+          <div style="padding:10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+            <div style="color:var(--text2);font-size:11px;margin-bottom:8px;font-weight:600">BAT</div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3)">XA → AB</span><span class="mono" style="color:var(--purple)">0.382 – 0.500</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3)">AB → BC</span><span class="mono" style="color:var(--purple)">0.382 – 0.886</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--text3)">XA → AD</span><span class="mono up">0.886</span></div>
+          </div>
+          <div style="padding:10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+            <div style="color:var(--text2);font-size:11px;margin-bottom:8px;font-weight:600">BUTTERFLY</div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3)">XA → AB</span><span class="mono" style="color:var(--amber)">0.786</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3)">BC → CD</span><span class="mono" style="color:var(--amber)">1.618 – 2.618</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--text3)">XA → AD</span><span class="mono up">1.272 – 1.618</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-3">
+      <div class="card-sm">
+        <div class="metric-label">形態準確率 / Accuracy</div>
+        <div class="metric-val up" id="acc-val">73.4%</div>
+        <div class="accuracy-bar" style="margin-top:10px"><div class="accuracy-fill" id="acc-bar" style="width:0;background:var(--green)"></div></div>
+        <div class="metric-sub">回測 500 次 / 500 backtests</div>
+      </div>
+      <div class="card-sm">
+        <div class="metric-label">已掃描形態 / Scanned</div>
+        <div class="metric-val">247</div>
+        <div class="metric-sub">過去 30 天 / Last 30 days</div>
+      </div>
+      <div class="card-sm">
+        <div class="metric-label">活躍信號 / Active Signals</div>
+        <div class="metric-val neutral" id="active-signals">--</div>
+        <div class="metric-sub">即時更新 / Real-time</div>
+      </div>
+    </div>
+
+  </div><!-- /harmonic -->
+
+</main>
+
+<footer>
+  <p>CryptoPulse &nbsp;·&nbsp; 數據來源: <a href="https://alternative.me" target="_blank">Alternative.me</a> &nbsp;·&nbsp; <a href="https://coingecko.com" target="_blank">CoinGecko</a> &nbsp;·&nbsp; 僅供參考，非投資建議 / For reference only, not financial advice</p>
+</footer>
+
+<script>
+// ─── Utilities ────────────────────────────────────────────────
+function fmt(n) {
+  if (!n && n !== 0) return '--';
+  if (n >= 1e12) return '$' + (n / 1e12).toFixed(2) + 'T';
+  if (n >= 1e9)  return '$' + (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6)  return '$' + (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1000) return '$' + n.toLocaleString('en', { maximumFractionDigits: 0 });
+  return '$' + parseFloat(n).toFixed(2);
+}
+function fmtPct(n) {
+  if (n == null) return '--';
+  return (n >= 0 ? '+' : '') + parseFloat(n).toFixed(2) + '%';
+}
+function getFGInfo(v) {
+  v = parseInt(v);
+  if (v <= 24) return { label: '極度恐懼 Extreme Fear', color: '#ff4d6d' };
+  if (v <= 44) return { label: '恐懼 Fear',             color: '#ff9800' };
+  if (v <= 55) return { label: '中立 Neutral',           color: '#ffb800' };
+  if (v <= 74) return { label: '貪婪 Greed',             color: '#76c442' };
+  return            { label: '極度貪婪 Extreme Greed',   color: '#00e5a0' };
+}
+
+// ─── Navigation ───────────────────────────────────────────────
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'harmonic') {
+    setTimeout(() => { if (!harmonicChart) initHarmonic(); }, 50);
+    setTimeout(() => {
+      document.getElementById('acc-bar').style.width = '73.4%';
+    }, 300);
+  }
+}
+
+// ─── Gauge ────────────────────────────────────────────────────
+function drawGauge(canvas, value) {
+  const ctx = canvas.getContext('2d');
+  const cx = 130, cy = 138, r = 100;
+  ctx.clearRect(0, 0, 260, 150);
+
+  const segs = [
+    { from: Math.PI,       to: Math.PI * 1.2, color: '#ff1744' },
+    { from: Math.PI * 1.2, to: Math.PI * 1.4, color: '#ff5722' },
+    { from: Math.PI * 1.4, to: Math.PI * 1.6, color: '#ffb800' },
+    { from: Math.PI * 1.6, to: Math.PI * 1.8, color: '#76c442' },
+    { from: Math.PI * 1.8, to: Math.PI * 2,   color: '#00e5a0' },
+  ];
+  segs.forEach(s => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r,    s.from, s.to);
+    ctx.arc(cx, cy, r-18, s.to, s.from, true);
+    ctx.closePath();
+    ctx.fillStyle = s.color + '44';
+    ctx.fill();
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  });
+
+  const angle = Math.PI + (parseInt(value) / 100) * Math.PI;
+  const nx = cx + Math.cos(angle) * 78;
+  const ny = cy + Math.sin(angle) * 78;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(nx, ny);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+
+  ctx.font = 'bold 26px "IBM Plex Mono", monospace';
+  ctx.fillStyle = getFGInfo(value).color;
+  ctx.textAlign = 'center';
+  ctx.fillText(value, cx, cy - 12);
+}
+
+// ─── Charts ───────────────────────────────────────────────────
+let marketChart, sentimentHistChart;
+
+function updateBTCStats(coin) {
+  document.getElementById('btc-high').textContent = fmt(coin.high_24h);
+  document.getElementById('btc-low').textContent  = fmt(coin.low_24h);
+  document.getElementById('btc-vol').textContent  = fmt(coin.total_volume);
+  document.getElementById('btc-mcap').textContent = fmt(coin.market_cap);
+}
+
+function initSentimentHistChart(history) {
+  const slice   = history.slice(0, 30).reverse();
+  const labels  = slice.map(d => { const dt = new Date(d.timestamp * 1000); return `${dt.getMonth()+1}/${dt.getDate()}`; });
+  const vals    = slice.map(d => parseInt(d.value));
+  const colors  = vals.map(v => v <= 44 ? '#ff4d6d' : v <= 55 ? '#ffb800' : '#00e5a0');
+  if (sentimentHistChart) sentimentHistChart.destroy();
+  sentimentHistChart = new Chart(document.getElementById('sentimentHistChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ data: vals, backgroundColor: colors, borderRadius: 3, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => `${c.raw} — ${getFGInfo(c.raw).label}` } }
+      },
+      scales: {
+        y: { min: 0, max: 100, grid: { color: '#ffffff08' }, ticks: { color: '#4a5568', font: { size: 10 } } },
+        x: { grid: { display: false }, ticks: { color: '#4a5568', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } }
+      }
+    }
+  });
+}
+
+// ─── Coin Table ───────────────────────────────────────────────
+const COIN_COLORS = {
+  bitcoin: '#f7931a', ethereum: '#627eea', solana: '#9945ff',
+  binancecoin: '#f3ba2f', cardano: '#0033ad', ripple: '#00aae4'
+};
+const COIN_SYM = {
+  bitcoin: 'BTC', ethereum: 'ETH', solana: 'SOL',
+  binancecoin: 'BNB', cardano: 'ADA', ripple: 'XRP'
+};
+
+function renderCoinTable(coins) {
+  const tbody = document.getElementById('coin-table-body');
+  tbody.innerHTML = coins.map(c => {
+    const pct = c.price_change_percentage_24h || 0;
+    const cls = pct >= 0 ? 'up' : 'down';
+    const pillCls = pct >= 5 ? 'pill-green' : pct <= -5 ? 'pill-red' : 'pill-amber';
+    const sentLabel = pct >= 5 ? '貪婪 Greed' : pct >= 0 ? '偏多 Bullish' : pct >= -5 ? '偏空 Bearish' : '恐懼 Fear';
+    const col = COIN_COLORS[c.id] || '#888';
+    return `<tr>
+      <td><div class="coin-name">
+        <div class="coin-icon" style="background:${col}22;color:${col}">${COIN_SYM[c.id] || '?'}</div>
+        <span>${c.name}</span>
+      </div></td>
+      <td class="mono">${fmt(c.current_price)}</td>
+      <td class="mono ${cls}">${fmtPct(pct)}</td>
+      <td><span class="pill ${pillCls}">${sentLabel}</span></td>
+    </tr>`;
+  }).join('');
+
+  const btc = coins.find(c => c.id === 'bitcoin');
+  const eth = coins.find(c => c.id === 'ethereum');
+  const totalMcap = coins.reduce((a, c) => a + (c.market_cap || 0), 0);
+
+  if (btc) {
+    const p = btc.price_change_percentage_24h || 0;
+    document.getElementById('btc-price').textContent = fmt(btc.current_price);
+    document.getElementById('btc-price').className = 'metric-val ' + (p >= 0 ? 'up' : 'down');
+    document.getElementById('btc-change').textContent = fmtPct(p) + ' (24h)';
+    document.getElementById('btc-change').className = 'metric-sub ' + (p >= 0 ? 'up' : 'down');
+    updateBTCStats(btc);
+  }
+  if (eth) {
+    const p = eth.price_change_percentage_24h || 0;
+    document.getElementById('eth-price').textContent = fmt(eth.current_price);
+    document.getElementById('eth-price').className = 'metric-val ' + (p >= 0 ? 'up' : 'down');
+    document.getElementById('eth-change').textContent = fmtPct(p) + ' (24h)';
+    document.getElementById('eth-change').className = 'metric-sub ' + (p >= 0 ? 'up' : 'down');
+  }
+  document.getElementById('total-mcap').textContent = fmt(totalMcap);
+  document.getElementById('mcap-sub').textContent = '整合 6 幣種';
+  document.getElementById('mcap-sub').classList.remove('pulse');
+}
+
+// ─── News ─────────────────────────────────────────────────────
+const NEWS = [
+  { title: 'Bitcoin 突破關鍵阻力位，市場看多情緒升溫 / BTC breaks key resistance, bullish sentiment rising', time: '2 分鐘前', sent: 'bullish' },
+  { title: '以太坊 ETF 資金持續流入，機構布局明顯 / ETH ETF inflows continue, institutional accumulation visible', time: '18 分鐘前', sent: 'bullish' },
+  { title: '美聯儲官員發表謹慎言論，加密市場震盪 / Fed officials cautious, crypto markets volatile', time: '45 分鐘前', sent: 'bearish' },
+  { title: 'Solana 鏈上活躍地址創近期新高 / Solana on-chain active addresses hit recent high', time: '1 小時前', sent: 'bullish' },
+  { title: '監管機構對穩定幣發行商展開調查 / Regulators investigate stablecoin issuers', time: '2 小時前', sent: 'bearish' },
+  { title: 'BTC 礦工持幣量連續3週增加，供應壓力下降 / BTC miner holdings increase 3rd week straight', time: '3 小時前', sent: 'bullish' },
+];
+
+function renderNews() {
+  document.getElementById('news-feed').innerHTML = NEWS.map(n => {
+    const color = n.sent === 'bullish' ? '#00e5a0' : '#ff4d6d';
+    const label = n.sent === 'bullish' ? '看多 Bullish' : '看空 Bearish';
+    return `<div class="news-item">
+      <div class="news-dot" style="background:${color}"></div>
+      <div style="flex:1">
+        <div class="news-title">${n.title}</div>
+        <div class="news-meta">${n.time} · <span style="color:${color};font-weight:600">${label}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── Harmonic Pattern Chart ───────────────────────────────────
+let currentSymbol = 'BTC';
+
+const ALL_PATTERNS = {
+  BTC: [
+    { name: 'Gartley', type: 'Bullish', tf: '4H', acc: 76, col: '#00e5a0' },
+    { name: 'Crab',    type: 'Bearish', tf: '1D', acc: 63, col: '#ff4d6d' },
+  ],
+  ETH: [
+    { name: 'Butterfly', type: 'Bearish', tf: '1D', acc: 68, col: '#ff4d6d' },
+    { name: 'Bat',       type: 'Bullish', tf: '4H', acc: 71, col: '#00e5a0' },
+  ],
+  SOL: [
+    { name: 'Bat',    type: 'Bullish', tf: '1H', acc: 71, col: '#00e5a0' },
+    { name: 'Shark',  type: 'Bearish', tf: '4H', acc: 65, col: '#ff4d6d' },
+  ],
+  BNB: [
+    { name: 'Crab',    type: 'Bearish', tf: '4H', acc: 63, col: '#ff4d6d' },
+    { name: 'Gartley', type: 'Bullish', tf: '1D', acc: 74, col: '#00e5a0' },
+  ],
+};
+
+function renderPatterns(sym) {
+  sym = sym || 'BTC';
+  const list = ALL_PATTERNS[sym] || ALL_PATTERNS['BTC'];
+  document.getElementById('pattern-list').innerHTML = list.map(p => {
+    const pillCls = p.col === '#00e5a0' ? 'pill-green' : 'pill-red';
+    const typeLabel = p.type === 'Bullish' ? '看多 Bullish' : '看空 Bearish';
+    return `<div class="pattern-item">
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span class="pattern-name">${p.name}</span>
+          <span class="pill ${pillCls}">${typeLabel}</span>
+        </div>
+        <div class="pattern-meta">${sym}/USDT · ${p.tf} · 準確率 ${p.acc}%</div>
+        <div class="accuracy-bar"><div class="accuracy-fill" style="width:${p.acc}%;background:${p.col}"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── TradingView Advanced Chart ───────────────────────────────
+let tvWidget = null;
+let tvSymbol = 'BINANCE:BTCUSDT';
+let tvInterval = '240';
+
+function initTVChart() {
+  if (typeof TradingView === 'undefined') return;
+  if (tvWidget) { tvWidget.remove(); tvWidget = null; }
+
+  tvWidget = new TradingView.widget({
+    container_id: 'tradingview_advanced',
+    symbol: tvSymbol,
+    interval: tvInterval,
+    timezone: 'Asia/Taipei',
+    theme: 'dark',
+    style: '1',           // Candlestick
+    locale: 'zh_TW',
+    toolbar_bg: '#151820',
+    enable_publishing: false,
+    allow_symbol_change: true,
+    save_image: false,
+    hide_top_toolbar: false,
+    hide_legend: false,
+    withdateranges: true,
+    range: '3M',
+    studies: [
+      'Volume@tv-basicstudies',
+      'RSI@tv-basicstudies',
+      'MACD@tv-basicstudies'
+    ],
+    overrides: {
+      'mainSeriesProperties.candleStyle.upColor': '#00e5a0',
+      'mainSeriesProperties.candleStyle.downColor': '#ff4d6d',
+      'mainSeriesProperties.candleStyle.borderUpColor': '#00e5a0',
+      'mainSeriesProperties.candleStyle.borderDownColor': '#ff4d6d',
+      'mainSeriesProperties.candleStyle.wickUpColor': '#00e5a0',
+      'mainSeriesProperties.candleStyle.wickDownColor': '#ff4d6d',
+      'paneProperties.background': '#151820',
+      'paneProperties.backgroundType': 'solid',
+      'paneProperties.vertGridProperties.color': '#ffffff08',
+      'paneProperties.horzGridProperties.color': '#ffffff08',
+      'scalesProperties.textColor': '#4a5568',
+      'scalesProperties.fontSize': 10,
+    },
+    loading_screen: { backgroundColor: '#151820', foregroundColor: '#00e5a0' },
+    width: '100%',
+    height: '100%',
+    autosize: true,
+  });
+}
+
+function setTVSymbol(sym, label, btn) {
+  tvSymbol = sym;
+  document.querySelectorAll('#sym-controls .ctrl-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  initTVChart();
+  renderPatterns(label);
+}
+
+function setTVInterval(interval, btn) {
+  tvInterval = interval;
+  document.querySelectorAll('#tf-controls .ctrl-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  initTVChart();
+}
+
+// Keep legacy for harmonic page init
+function initHarmonic() {
+  renderPatterns('BTC');
+  document.getElementById('active-signals').textContent = Math.floor(Math.random() * 3) + 2;
+  // TradingView widget initialises via onload callback above
+  // Trigger manually if script already loaded
+  if (typeof TradingView !== 'undefined' && !tvWidget) initTVChart();
+}
+
+// ─── API Fetches ──────────────────────────────────────────────
+async function fetchFearGreed() {
+  try {
+    const res = await fetch('https://api.alternative.me/fng/?limit=30&format=json');
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.data;
+  } catch { return null; }
+}
+
+async function fetchCoins() {
+  try {
+    const url = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana,binancecoin,cardano,ripple&order=market_cap_desc&sparkline=true';
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+// ─── Init ─────────────────────────────────────────────────────
+async function init() {
+  renderNews();
+
+  const [fgData, coins] = await Promise.all([fetchFearGreed(), fetchCoins()]);
+
+  // Fear & Greed
+  if (fgData && fgData.length) {
+    const val = parseInt(fgData[0].value);
+    const yesterday = parseInt(fgData[1]?.value || 0);
+    const { label, color } = getFGInfo(val);
+
+    drawGauge(document.getElementById('gaugeCanvas'), val);
+    document.getElementById('fg-val').textContent = val;
+    document.getElementById('fg-val').style.color = color;
+    document.getElementById('fg-label').textContent = label;
+    document.getElementById('fg-label').style.color = color;
+    document.getElementById('fg-desc').textContent = `今日 Today: ${val} ｜ 昨日 Yesterday: ${yesterday}`;
+    document.getElementById('fg-sub').textContent = label;
+    document.getElementById('fg-sub').style.color = color;
+    document.getElementById('fg-sub').classList.remove('pulse');
+    initSentimentHistChart(fgData);
+  } else {
+    // Fallback mock data
+    const mockVal = 58;
+    drawGauge(document.getElementById('gaugeCanvas'), mockVal);
+    document.getElementById('fg-val').textContent = mockVal;
+    document.getElementById('fg-label').textContent = '貪婪 Greed';
+    document.getElementById('fg-desc').textContent = '（示範數據 / Demo data）';
+    document.getElementById('fg-sub').textContent = '貪婪 Greed';
+    document.getElementById('fg-sub').classList.remove('pulse');
+    const mockHistory = Array.from({ length: 30 }, (_, i) => ({
+      value: String(40 + Math.floor(Math.random() * 40)),
+      timestamp: String(Math.floor(Date.now() / 1000) - i * 86400)
+    }));
+    initSentimentHistChart(mockHistory);
+  }
+
+  // Coins
+  if (coins && coins.length) {
+    renderCoinTable(coins);
+  } else {
+    document.getElementById('coin-table-body').innerHTML =
+      '<tr><td colspan="4" style="color:var(--text3);font-size:12px;padding:1.25rem">⚠ API 頻率限制，請稍後刷新 / API rate limited — refresh in a moment</td></tr>';
+  }
+}
+
+init();
+</script>
+</body>
+</html>

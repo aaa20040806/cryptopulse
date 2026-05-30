@@ -322,7 +322,11 @@
     <button class="nav-tab active" onclick="showPage('sentiment', this)">市場情緒 / Sentiment</button>
     <button class="nav-tab" onclick="showPage('harmonic', this)">諧波形態 / Harmonics</button>
   </div>
-  <div class="badge">● LIVE</div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span id="status-bar" style="font-size:11px;color:var(--text2);font-family:'IBM Plex Mono',monospace;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">載入中...</span>
+    <button onclick="manualRefresh()" title="手動刷新" style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--text2);padding:4px 10px;font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;transition:all .2s" onmouseover="this.style.color='var(--green)';this.style.borderColor='#00e5a030'" onmouseout="this.style.color='var(--text2)';this.style.borderColor='var(--border2)'">⟳ 刷新</button>
+    <div class="badge">● LIVE</div>
+  </div>
 </nav>
 
 <main>
@@ -879,9 +883,21 @@ async function fetchCoins() {
   } catch { return null; }
 }
 
+// ─── Status Bar ───────────────────────────────────────────────
+function setStatus(msg, color) {
+  const el = document.getElementById('status-bar');
+  if (el) { el.textContent = msg; el.style.color = color || 'var(--text2)'; }
+}
+
 // ─── Init ─────────────────────────────────────────────────────
-async function init() {
-  renderNews();
+let refreshTimer = null;
+let countdownTimer = null;
+let countdown = 60;
+const REFRESH_SEC = 60;
+
+async function init(isAuto) {
+  if (!isAuto) renderNews();
+  setStatus('⟳ 數據更新中 / Fetching data...', 'var(--amber)');
 
   const [fgData, coins] = await Promise.all([fetchFearGreed(), fetchCoins()]);
 
@@ -902,12 +918,11 @@ async function init() {
     document.getElementById('fg-sub').classList.remove('pulse');
     initSentimentHistChart(fgData);
   } else {
-    // Fallback mock data
     const mockVal = 58;
     drawGauge(document.getElementById('gaugeCanvas'), mockVal);
     document.getElementById('fg-val').textContent = mockVal;
     document.getElementById('fg-label').textContent = '貪婪 Greed';
-    document.getElementById('fg-desc').textContent = '（示範數據 / Demo data）';
+    document.getElementById('fg-desc').textContent = '（API 限制，使用示範數據 / API limited, demo data）';
     document.getElementById('fg-sub').textContent = '貪婪 Greed';
     document.getElementById('fg-sub').classList.remove('pulse');
     const mockHistory = Array.from({ length: 30 }, (_, i) => ({
@@ -920,13 +935,43 @@ async function init() {
   // Coins
   if (coins && coins.length) {
     renderCoinTable(coins);
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setStatus(`✓ 最後更新 / Last updated: ${timeStr}`, 'var(--green)');
   } else {
     document.getElementById('coin-table-body').innerHTML =
-      '<tr><td colspan="4" style="color:var(--text3);font-size:12px;padding:1.25rem">⚠ API 頻率限制，請稍後刷新 / API rate limited — refresh in a moment</td></tr>';
+      '<tr><td colspan="4" style="color:var(--text3);font-size:12px;padding:1.25rem">⚠ API 頻率限制，60秒後自動重試 / Rate limited — auto retry in 60s</td></tr>';
+    setStatus('⚠ API 頻率限制，等待重試 / Rate limited, retrying soon...', 'var(--red)');
   }
+
+  // Start countdown to next refresh
+  startCountdown();
 }
 
-init();
+function startCountdown() {
+  if (countdownTimer) clearInterval(countdownTimer);
+  countdown = REFRESH_SEC;
+  countdownTimer = setInterval(() => {
+    countdown--;
+    const el = document.getElementById('status-bar');
+    if (el && el.style.color !== 'var(--red)') {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      el.textContent = `✓ 最後更新 ${timeStr}　｜　${countdown}秒後自動刷新 / Auto refresh in ${countdown}s`;
+    }
+    if (countdown <= 0) {
+      clearInterval(countdownTimer);
+      init(true);
+    }
+  }, 1000);
+}
+
+function manualRefresh() {
+  if (countdownTimer) clearInterval(countdownTimer);
+  init(false);
+}
+
+init(false);
 </script>
 </body>
 </html>
